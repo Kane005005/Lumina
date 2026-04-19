@@ -398,3 +398,48 @@ FodyWeavers.xsd
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+
+# Fichiers sensibles - NE JAMAIS COMMITER
+*.env
+credentials*.json
+oauth_credentials*.json
+credentials_oauth.txt
+token.pickle
+oauth_state.json
+*.pickle
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Django
+db.sqlite3
+static/
+media/
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
