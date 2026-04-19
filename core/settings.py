@@ -25,14 +25,23 @@ SECRET_KEY = 'django-insecure-flk@smhr6b*ih6)p68_&$8!bm9dbzifcofn0n&ec-mn#s7*se2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-# core/settings.py
+# ALLOWED_HOSTS pour PythonAnywhere
+ALLOWED_HOSTS = [
+    'luminaireads.pythonanywhere.com',  # Ton username
+    'localhost',
+    '127.0.0.1',
+]
+
+# CORS
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "https://luminaireads.pythonanywhere.com",
+    "https://luminabot.pythonanywhere.com",
+    "https://Luminabot.pythonanywhere.com",
+    "https://toncompte.github.io",  # Pour le frontend GitHub Pages
 ]
+
 
 
 CORS_ALLOW_CREDENTIALS = True
