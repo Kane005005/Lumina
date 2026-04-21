@@ -442,4 +442,5 @@ frontend/.env.local
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.dbdb.sqlite3
+db.sqlite3
