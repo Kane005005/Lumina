@@ -17,10 +17,11 @@ class BookSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'author', 'description',
             'cover_url', 'download_url',
-            'cover_image_url', 'epub_file_url',  # Compatibilité
-            'cover_image_id', 'epub_file_id',    # Pour debug
+            'cover_image_url', 'epub_file_url',
+            'cover_image_id', 'epub_file_id',
             'category', 'category_name',
-            'created_at', 'downloads_count', 'is_active'
+            'created_at', 'downloads_count', 'is_active',
+            'is_featured', 'featured_order'
         ]
         read_only_fields = ['created_at', 'downloads_count']
     
