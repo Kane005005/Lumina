@@ -290,3 +290,97 @@ def download_book(request, book_id):
         return response
     else:
         raise Http404("Fichier non disponible pour ce livre")
+
+# books/views.py - ajouter cette vue
+import requests
+from django.http import HttpResponse, StreamingHttpResponse
+from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def proxy_epub_download(request, book_id):
+    """
+    Proxy pour télécharger les fichiers EPUB depuis Google Drive.
+    Évite les problèmes CORS.
+    """
+    book = get_object_or_404(Book, id=book_id, is_active=True)
+    
+    # Incrémenter le compteur de téléchargements
+    book.downloads_count += 1
+    book.save(update_fields=['downloads_count'])
+    
+    # Récupérer l'ID ou l'URL
+    epub_id = book.get_epub_id()
+    epub_url = book.epub_file_url
+    
+    if epub_id:
+        download_url = f"https://drive.google.com/uc?export=download&id={epub_id}"
+    elif epub_url:
+        download_url = epub_url
+    else:
+        return HttpResponse("Fichier non disponible", status=404)
+    
+    try:
+        # Télécharger le fichier depuis Google Drive
+        response = requests.get(download_url, stream=True, timeout=30)
+        
+        if response.status_code == 200:
+            # Créer une réponse streaming
+            django_response = StreamingHttpResponse(
+                response.iter_content(chunk_size=8192),
+                content_type='application/epub+zip'
+            )
+            
+            # Nettoyer le nom du fichier
+            filename = f"{book.title.replace(' ', '_')[:50]}.epub"
+            filename = ''.join(c for c in filename if c.isalnum() or c in '._-')
+            
+            django_response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            django_response['Access-Control-Allow-Origin'] = '*'
+            django_response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+            django_response['Access-Control-Allow-Headers'] = '*'
+            
+            return django_response
+        else:
+            return HttpResponse(
+                f"Erreur lors du téléchargement: {response.status_code}",
+                status=response.status_code
+            )
+            
+    except Exception as e:
+        print(f"Erreur proxy EPUB: {e}")
+        return HttpResponse(f"Erreur serveur: {str(e)}", status=500)
+
+@csrf_exempt
+def stream_epub(request, book_id):
+    """
+    Stream l'EPUB pour la lecture en ligne (sans téléchargement forcé).
+    """
+    book = get_object_or_404(Book, id=book_id, is_active=True)
+    
+    epub_id = book.get_epub_id()
+    epub_url = book.epub_file_url
+    
+    if epub_id:
+        download_url = f"https://drive.google.com/uc?export=download&id={epub_id}"
+    elif epub_url:
+        download_url = epub_url
+    else:
+        return HttpResponse("Fichier non disponible", status=404)
+    
+    try:
+        response = requests.get(download_url, stream=True, timeout=30)
+        
+        if response.status_code == 200:
+            django_response = StreamingHttpResponse(
+                response.iter_content(chunk_size=8192),
+                content_type='application/epub+zip'
+            )
+            django_response['Access-Control-Allow-Origin'] = '*'
+            return django_response
+        else:
+            return HttpResponse(status=response.status_code)
+            
+    except Exception as e:
+        print(f"Erreur stream EPUB: {e}")
+        return HttpResponse(status=500)

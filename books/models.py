@@ -1,5 +1,6 @@
 # books/models.py
 from django.db import models
+import re
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -36,7 +37,7 @@ class Book(models.Model):
     downloads_count = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     
-    # 🆕 NOUVEAU : Livre mis en avant
+    # Mise en avant
     is_featured = models.BooleanField(default=False, verbose_name="Mis en avant")
     featured_order = models.PositiveIntegerField(default=0, verbose_name="Ordre d'affichage")
     
@@ -51,23 +52,48 @@ class Book(models.Model):
     def __str__(self):
         return self.title
     
-    def get_cover_id(self):
-        if self.cover_image_id:
-            return self.cover_image_id
-        if self.cover_image_url:
-            import re
-            match = re.search(r'[?&]id=([^&]+)', self.cover_image_url)
+    # 🆕 Méthodes pour extraire les IDs
+    def extract_id_from_url(self, url):
+        """Extrait l'ID Google Drive d'une URL."""
+        if not url:
+            return None
+        patterns = [
+            r'[?&]id=([^&]+)',
+            r'/d/([^/]+)',
+            r'thumbnail.*id=([^&]+)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, url)
             if match:
                 return match.group(1)
         return None
     
+    def get_cover_id(self):
+        """Récupère l'ID de couverture."""
+        if self.cover_image_id:
+            return self.cover_image_id
+        return self.extract_id_from_url(self.cover_image_url)
+    
+    def get_epub_id(self):
+        """Récupère l'ID du fichier EPUB."""
+        if self.epub_file_id:
+            return self.epub_file_id
+        return self.extract_id_from_url(self.epub_file_url)
+    
     def get_cover_proxy_url(self):
-        cover_id = self.get_cover_id()
-        if cover_id:
+        """URL du proxy Django pour la couverture."""
+        if self.get_cover_id():
             return f"/api/books/{self.id}/cover/"
         return None
     
     def get_download_url(self):
-        if self.epub_file_id:
-            return f"https://drive.google.com/uc?export=download&id={self.epub_file_id}"
-        return self.epub_file_url
+        """URL de téléchargement via proxy."""
+        if self.get_epub_id() or self.epub_file_url:
+            return f"/api/books/{self.id}/download/"
+        return None
+    
+    def get_stream_url(self):
+        """URL de streaming pour la lecture en ligne."""
+        if self.get_epub_id() or self.epub_file_url:
+            return f"/api/books/{self.id}/stream/"
+        return None

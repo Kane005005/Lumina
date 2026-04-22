@@ -11,12 +11,13 @@ class BookSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
     cover_url = serializers.SerializerMethodField()
     download_url = serializers.SerializerMethodField()
+    stream_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Book
         fields = [
             'id', 'title', 'author', 'description',
-            'cover_url', 'download_url',
+            'cover_url', 'download_url', 'stream_url',
             'cover_image_url', 'epub_file_url',
             'cover_image_id', 'epub_file_id',
             'category', 'category_name',
@@ -30,3 +31,6 @@ class BookSerializer(serializers.ModelSerializer):
     
     def get_download_url(self, obj):
         return obj.get_download_url()
+    
+    def get_stream_url(self, obj):
+        return obj.get_stream_url()
