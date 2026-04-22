@@ -1,9 +1,9 @@
 # books/views.py
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from django.db import models as django_models
+from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404
 from django.http import Http404, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -12,7 +12,6 @@ from django.core.cache import cache
 from .models import Book, Category
 from .serializers import BookSerializer, CategorySerializer
 import requests
-import hashlib
 import os
 
 
@@ -34,6 +33,10 @@ class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.filter(is_active=True)
     serializer_class = BookSerializer
     pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['title', 'author', 'description']
+    ordering_fields = ['created_at', 'downloads_count', 'title']
+    ordering = ['-created_at']
     
     def retrieve(self, request, *args, **kwargs):
         """Récupère un livre et incrémente le compteur de téléchargements."""
@@ -72,26 +75,53 @@ class BookViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def search(self, request):
         """
-        Recherche de livres par titre ou auteur.
-        Endpoint: /api/books/search/?q=terme
+        Recherche avancée avec filtres et tri.
+        Endpoint: /api/books/search/?q=terme&category=1&ordering=-downloads_count
         """
-        query = request.query_params.get('q', '')
+        queryset = self.get_queryset()
+        
+        # 1. Recherche textuelle
+        query = request.query_params.get('q', '').strip()
         if query:
-            books = self.get_queryset().filter(
-                django_models.Q(title__icontains=query) | 
-                django_models.Q(author__icontains=query) |
-                django_models.Q(description__icontains=query)
+            queryset = queryset.filter(
+                Q(title__icontains=query) |
+                Q(author__icontains=query) |
+                Q(description__icontains=query)
             ).distinct()
-            
-            # Pagination des résultats de recherche
-            page = self.paginate_queryset(books)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-            
-            serializer = self.get_serializer(books, many=True)
-            return Response(serializer.data)
-        return Response([])
+        
+        # 2. Filtre par catégorie
+        category_id = request.query_params.get('category')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        
+        # 3. Filtre par auteur (optionnel)
+        author = request.query_params.get('author')
+        if author:
+            queryset = queryset.filter(author__icontains=author)
+        
+        # 4. Tri
+        ordering = request.query_params.get('ordering', '-created_at')
+        allowed_ordering = ['created_at', '-created_at', 'downloads_count', '-downloads_count', 'title', '-title']
+        if ordering in allowed_ordering:
+            queryset = queryset.order_by(ordering)
+        
+        # 5. Pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'results': serializer.data,
+            'count': queryset.count(),
+            'query': query,
+            'filters_applied': {
+                'category': category_id,
+                'author': author,
+                'ordering': ordering
+            }
+        })
     
     @action(detail=False, methods=['get'])
     def by_category(self, request):
@@ -111,6 +141,37 @@ class BookViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(books, many=True)
             return Response(serializer.data)
         return Response([])
+    
+    @action(detail=False, methods=['get'])
+    def categories(self, request):
+        """
+        Récupère toutes les catégories avec le nombre de livres.
+        Endpoint: /api/books/categories/
+        """
+        categories = Category.objects.annotate(
+            book_count=Count('book', filter=Q(book__is_active=True))
+        ).filter(book_count__gt=0)
+        
+        data = [{
+            'id': cat.id,
+            'name': cat.name,
+            'slug': cat.slug,
+            'book_count': cat.book_count
+        } for cat in categories]
+        
+        return Response(data)
+    
+    @action(detail=False, methods=['get'])
+    def authors(self, request):
+        """
+        Récupère la liste des auteurs uniques.
+        Endpoint: /api/books/authors/
+        """
+        authors = Book.objects.filter(is_active=True).exclude(
+            author__isnull=True
+        ).exclude(author='').values_list('author', flat=True).distinct().order_by('author')
+        
+        return Response(list(authors))
 
 
 # ==================== PROXY D'IMAGES ====================
