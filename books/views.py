@@ -432,6 +432,36 @@ def read_book_page(request, book_id):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+def search_in_book(request, book_id):
+    """Recherche un terme dans un livre."""
+    book = get_object_or_404(Book, id=book_id, is_active=True)
+    query = request.GET.get('q', '').strip()
+    
+    if not query:
+        return Response({
+            'success': False,
+            'error': 'Terme de recherche requis'
+        }, status=400)
+    
+    try:
+        service = EpubReaderService(book)
+        results = service.search(query)
+        
+        return Response({
+            'success': True,
+            'query': query,
+            'results': results,
+            'total': len(results)
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def book_metadata_api(request, book_id):
     """
     Récupère les métadonnées et la table des matières.

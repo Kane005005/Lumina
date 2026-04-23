@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     BookViewSet, CategoryViewSet, 
-    proxy_cover_image, proxy_epub_download, stream_epub
+    proxy_cover_image, proxy_epub_download, stream_epub, search_in_book
 )
 from .views import read_book_page, book_metadata_api
 router = DefaultRouter()
@@ -17,4 +17,5 @@ urlpatterns = [
     path('books/<int:book_id>/stream/', stream_epub, name='book-stream'),
     path('books/<int:book_id>/read/', read_book_page, name='book-read'),
     path('books/<int:book_id>/metadata/', book_metadata_api, name='book-metadata'),
+    path('books/<int:book_id>/search/', search_in_book, name='book-search'),
 ]
