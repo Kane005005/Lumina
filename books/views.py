@@ -395,11 +395,7 @@ from .epub_service import EpubReaderService
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def read_book_page(request, book_id):
-    """
-    API pour lire un livre page par page.
-    
-    GET /api/books/{id}/read/?page=1
-    """
+    """API pour lire un livre page par page."""
     book = get_object_or_404(Book, id=book_id, is_active=True)
     
     page = int(request.GET.get('page', 1))
@@ -408,7 +404,7 @@ def read_book_page(request, book_id):
         service = EpubReaderService(book)
         page_data = service.get_page(page)
         
-        # Incrémenter le compteur de lectures (optionnel)
+        # Incrémenter le compteur
         book.reads_count = (book.reads_count or 0) + 1
         book.save(update_fields=['reads_count'])
         
@@ -422,7 +418,13 @@ def read_book_page(request, book_id):
             **page_data
         })
         
+    except ValueError as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=400)
     except Exception as e:
+        print(f"❌ Erreur lecture: {e}")
         return Response({
             'success': False,
             'error': str(e)
