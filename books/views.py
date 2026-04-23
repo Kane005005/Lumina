@@ -384,3 +384,75 @@ def stream_epub(request, book_id):
     except Exception as e:
         print(f"Erreur stream EPUB: {e}")
         return HttpResponse(status=500)
+
+# books/views.py - ajouter
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .epub_service import EpubReaderService
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def read_book_page(request, book_id):
+    """
+    API pour lire un livre page par page.
+    
+    GET /api/books/{id}/read/?page=1
+    """
+    book = get_object_or_404(Book, id=book_id, is_active=True)
+    
+    page = int(request.GET.get('page', 1))
+    
+    try:
+        service = EpubReaderService(book)
+        page_data = service.get_page(page)
+        
+        # Incrémenter le compteur de lectures (optionnel)
+        book.reads_count = (book.reads_count or 0) + 1
+        book.save(update_fields=['reads_count'])
+        
+        return Response({
+            'success': True,
+            'book': {
+                'id': book.id,
+                'title': book.title,
+                'author': book.author
+            },
+            **page_data
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def book_metadata_api(request, book_id):
+    """
+    Récupère les métadonnées et la table des matières.
+    
+    GET /api/books/{id}/metadata/
+    """
+    book = get_object_or_404(Book, id=book_id, is_active=True)
+    
+    try:
+        service = EpubReaderService(book)
+        metadata = service.get_metadata()
+        toc = service.get_toc()
+        total_pages = service.get_total_pages()
+        
+        return Response({
+            'success': True,
+            'metadata': metadata,
+            'toc': toc,
+            'total_pages': total_pages
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=500)

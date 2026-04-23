@@ -30,6 +30,7 @@ class Book(models.Model):
     # URLs
     cover_image_url = models.CharField(max_length=500, blank=True, null=True)
     epub_file_url = models.CharField(max_length=500, blank=True, null=True)
+    reads_count = models.PositiveIntegerField(default=0, verbose_name="Lectures")
     
     # Métadonnées
     created_at = models.DateTimeField(auto_now_add=True)
