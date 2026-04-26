@@ -4,5 +4,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('books.urls')), # Toute notre API sera sous /api/
+    path('api/', include('books.urls')),
+    path('api/accounts/', include('accounts.urls')),  # 🆕
 ]

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     
     # Nos applications
     'books',
+    'accounts',  # 🆕
 ]
 
 MIDDLEWARE = [
